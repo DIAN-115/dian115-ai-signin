@@ -6,7 +6,8 @@ const TOTER_PATHS = {
 }
 const PLUGIN_ID = 'toter.daily.signin'
 const HISTORY_KEY = 'sign-history'
-const DEFAULT_BASE_URL = 'https://go.toter.me'
+const SCHEDULE_STATE_KEY = 'schedule-state'
+const DEFAULT_SIGN_TIME = '00:01'
 
 function fail(message, code = 'failed') {
   throw Object.assign(new Error(message), { code })
@@ -16,8 +17,14 @@ function generateAccountId() {
   return 'acct-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
 }
 
-function normalizeBaseUrl(input, fallback) {
-  let value = String(input || fallback || '').trim().replace(/\/+$/, '')
+function normalizeTime(input) {
+  const value = String(input || '').trim()
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return DEFAULT_SIGN_TIME
+  return value
+}
+
+function normalizeBaseUrl(input) {
+  let value = String(input || '').trim().replace(/\/+$/, '')
   if (!value) fail('请先在插件页面填写站点地址。', 'invalid_input')
   if (!/^https?:\/\//.test(value)) value = 'https://' + value
   try {
@@ -88,10 +95,10 @@ function summarizeData(data) {
 function normalizeAccount(input, previous = null) {
   const raw = input || {}
   const id = previous?.id || raw.id || generateAccountId()
-  const baseUrl = normalizeBaseUrl(raw.base_url, previous?.base_url || DEFAULT_BASE_URL)
+  const baseUrl = normalizeBaseUrl(raw.base_url || previous?.base_url)
   const username = String(raw.username || '').trim()
   const password = raw.password !== undefined && raw.password !== '' ? String(raw.password) : String(previous?.password || '')
-  const name = String(raw.name || username || '肖恩AI').trim().slice(0, 40)
+  const name = String(raw.name || username || 'AI 账号').trim().slice(0, 40)
 
   if (!username) fail('请填写用户名或邮箱。', 'invalid_input')
   if (!password) fail('请填写密码。', 'invalid_input')
@@ -126,7 +133,7 @@ function normalizeSettings(input) {
   } else if (raw.username || raw.password) {
     accounts = [normalizeAccount({
       id: 'toter',
-      name: '肖恩AI',
+      name: 'AI 账号',
       base_url: raw.base_url,
       username: raw.username,
       password: raw.password,
@@ -144,6 +151,7 @@ function normalizeSettings(input) {
   return {
     notify_success: raw.notify_success !== false,
     notify_failure: raw.notify_failure !== false,
+    sign_time: normalizeTime(raw.sign_time),
     accounts
   }
 }
@@ -251,8 +259,16 @@ async function runAccount(ctx, account) {
   }
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10)
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function todayKey(d = new Date()) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+function timeKey(d = new Date()) {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 }
 
 function aggregateOutcome(sites) {
@@ -341,7 +357,38 @@ async function notifyFailure(ctx, result, failures) {
 export async function run(ctx, input) {
   const rawSettings = await ctx.settings.get()
   const settings = normalizeSettings(rawSettings)
-  await ctx.settings.set(settings)
+
+  const isManual = input?.source === 'page' || Boolean(input?.accountId)
+  const now = new Date()
+  const targetTime = settings.sign_time || DEFAULT_SIGN_TIME
+
+  if (!isManual) {
+    let scheduleState = null
+    try {
+      scheduleState = unwrapStorageValue(await ctx.storage.get(SCHEDULE_STATE_KEY)) || null
+    } catch {
+      scheduleState = null
+    }
+
+    if (timeKey(now) !== targetTime) {
+      return {
+        at: now.toISOString(),
+        outcome: 'skipped',
+        message: `未到计划时间 ${targetTime}`,
+        sites: {},
+        scheduled: false
+      }
+    }
+    if (scheduleState && scheduleState.date === todayKey(now) && scheduleState.time === targetTime) {
+      return {
+        at: now.toISOString(),
+        outcome: 'skipped',
+        message: '今日计划签到已执行',
+        sites: {},
+        scheduled: true
+      }
+    }
+  }
 
   let accounts = settings.accounts.filter(account => account.enabled)
   if (input?.accountId) {
@@ -349,7 +396,7 @@ export async function run(ctx, input) {
   }
 
   if (!accounts.length) {
-    fail(input?.accountId ? '指定的 AI 账号未启用或不存在。' : '请先在插件页面添加并启用肖恩AI 账号。', 'invalid_input')
+    fail(input?.accountId ? '指定的 AI 账号未启用或不存在。' : '请先在插件页面添加并启用 AI 账号。', 'invalid_input')
   }
 
   const sites = {}
@@ -398,6 +445,10 @@ export async function run(ctx, input) {
       }
       const first = failures[0].error
       throw Object.assign(new Error(failures.map(item => `${item.site}：${item.error.message}`).join('；')), { code: first.code || 'failed' })
+    }
+
+    if (!isManual) {
+      await ctx.storage.set(SCHEDULE_STATE_KEY, { date: todayKey(now), time: targetTime, at: result.at })
     }
 
     if (settings.notify_success !== false) {
