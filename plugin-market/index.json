@@ -2,7 +2,7 @@
   "schema_version": 3,
   "repository": {
     "id": "DIAN-115.dian115-ai-signin",
-    "name": "NoboDy 的 AI 签到仓库",
+    "name": "AI 签到助手仓库",
     "homepage": "https://github.com/DIAN-115/dian115-ai-signin"
   },
   "plugins": [
@@ -10,15 +10,15 @@
       "id": "toter.daily.signin",
       "name": "AI 签到助手",
       "version": "0.0.1",
-      "author": "NoboDy",
+      "author": "D丶",
       "description": "多账号看板式肖恩AI 每日签到助手：弹窗添加和管理多个账号，自动登录签到，展示累计签到、连续天数、本月签到、五周日历与最近记录；账号密码仅保存在插件加密 KV。",
       "homepage": "https://github.com/DIAN-115/dian115-ai-signin",
       "repository_url": "https://github.com/DIAN-115/dian115-ai-signin",
       "icon": "https://raw.githubusercontent.com/DIAN-115/dian115-ai-signin/main/ui/icon.svg",
-      "changelog": "v0.0.1：初始多账号 AI 签到看板版本；支持弹窗添加、编辑、删除和停用账号，默认每天 00:01 对启用账号签到，提供全局与单账号手动签到、统计瓦片、签到日历、最近记录和通知汇总。",
-      "source_url": "https://raw.githubusercontent.com/DIAN-115/dian115-ai-signin/main/dist/toter-daily-signin-0.0.1.dian115p",
-      "sha256": "d84a16be9ea804bda03addd313c2b535870606e02de161368dcb574887e4007d",
-      "delivery": "source",
+      "changelog": "v0.0.1：DIAN115 本地签名的 protected-v4 正式包；初始多账号 AI 签到看板版本，支持弹窗添加、编辑、删除和停用账号，默认每天 00:01 对启用账号签到，提供全局与单账号手动签到、统计瓦片、签到日历、最近记录和通知汇总。",
+      "source_url": "https://raw.githubusercontent.com/DIAN-115/dian115-ai-signin/main/dist/toter-daily-signin-0.0.1.protected-v4.dian115p",
+      "sha256": "6dd4076c9f368be4af2eb8099aa1dc2e77b55553495f0a1fb80e7311064a4108",
+      "delivery": "protected-v4",
       "permissions": [],
       "keywords": [
         "AI",
