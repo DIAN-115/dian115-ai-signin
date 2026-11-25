@@ -32,10 +32,10 @@
           <div class="hero-copy">
             <span class="eyebrow">今日打卡进度</span>
             <h1 id="hero-title">今天，<span id="hero-done">0</span> / <span id="hero-total">0</span> 个账号已签到</h1>
-            <p class="hero-sub" id="hero-sub">添加肖恩AI 账号后，每天自动完成签到。</p>
+            <p class="hero-sub" id="hero-sub">添加 AI 账号后，按所选时间每天自动完成签到。</p>
             <div class="hero-chips">
               <span class="chip"><span class="chip-dot"></span><span id="chip-enabled">0</span> 个账号启用中</span>
-              <span class="chip"><span class="chip-dot soft"></span>每天 00:01 自动签到</span>
+              <span class="chip"><span class="chip-dot soft"></span>每天 <span id="chip-sign-time">00:01</span> 自动签到</span>
             </div>
             <div class="hero-actions">
               <button class="btn btn-primary" id="sign-now" type="button">
@@ -90,15 +90,16 @@
 
       <section class="sites-section" aria-labelledby="sites-title">
         <div class="section-head">
-          <div><h2 id="sites-title">签到账号</h2><p>管理肖恩AI 登录信息与当前状态</p></div>
+          <div><h2 id="sites-title">签到账号</h2><p>管理 AI 登录信息与当前状态</p></div>
           <span class="count-badge" id="sites-count">0</span>
         </div>
         <div class="site-grid" id="site-grid"></div>
       </section>
 
       <section class="panel settings-panel" aria-labelledby="settings-title">
-        <div class="panel-head"><div><h2 id="settings-title">通知设置</h2><p>通知走宿主已配置的渠道，受渠道开关与静默时段约束</p></div></div>
+        <div class="panel-head"><div><h2 id="settings-title">签到与通知设置</h2><p>选择每日签到时间；通知走宿主已配置渠道，受渠道开关与静默时段约束</p></div></div>
         <div class="settings-grid">
+          <label class="field schedule-field"><span>每日签到时间</span><input id="cfg-sign-time" type="time" value="00:01" autocomplete="off" spellcheck="false"><small>到点后自动执行；页面手动签到不受此时间限制。</small></label>
           <label class="toggle-row"><span><strong>成功后通知</strong><small>签到成功或今日已签到时推送</small></span><input type="checkbox" id="cfg-notify-success"><i class="toggle"></i></label>
           <label class="toggle-row"><span><strong>失败后通知</strong><small>签到失败时推送错误原因</small></span><input type="checkbox" id="cfg-notify-failure"><i class="toggle"></i></label>
         </div>
@@ -121,7 +122,7 @@
       </div>
       <div class="modal-body">
         <label class="field"><span>账号备注</span><input id="m-name" maxlength="40" placeholder="例如：主号 / 备用号" autocomplete="off" spellcheck="false"></label>
-        <label class="field"><span>站点地址</span><input id="m-base-url" type="url" maxlength="300" placeholder="https://go.toter.me" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>站点地址</span><input id="m-base-url" type="url" maxlength="300" placeholder="请填写站点 HTTPS 地址" autocomplete="off" spellcheck="false"></label>
         <label class="field"><span>用户名或邮箱</span><input id="m-username" maxlength="120" placeholder="用户名或邮箱" autocomplete="username" spellcheck="false"></label>
         <label class="field"><span>密码</span><input id="m-password" type="password" maxlength="300" placeholder="新账号请填写密码；编辑时留空保留原密码" autocomplete="current-password" spellcheck="false"><small>密码仅保存在插件加密 KV，不会回显到页面之外。</small></label>
         <label class="toggle-row"><span><strong>启用此账号</strong><small>定时签到和立即签到时执行该账号</small></span><input type="checkbox" id="m-enabled" checked><i class="toggle"></i></label>

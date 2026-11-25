@@ -3,10 +3,10 @@ const $ = id => document.getElementById(id)
 const PLUGIN_ID = 'toter.daily.signin'
 const HISTORY_KEY = 'sign-history'
 const CIRC = 2 * Math.PI * 82
-const DEFAULT_BASE_URL = 'https://go.toter.me'
+const DEFAULT_SIGN_TIME = '00:01'
 
 let ctxRef = null
-let current = { notify_success: true, notify_failure: true, accounts: [] }
+let current = { notify_success: true, notify_failure: true, sign_time: DEFAULT_SIGN_TIME, accounts: [] }
 let lastResult = null
 let history = {}
 let running = false
@@ -38,13 +38,19 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
+function normalizeTime(input) {
+  const value = String(input || '').trim()
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return DEFAULT_SIGN_TIME
+  return value
+}
+
 function hostOf(url) {
-  try { return new URL(String(url)).hostname } catch { return url || 'go.toter.me' }
+  try { return new URL(String(url)).hostname } catch { return String(url || '未配置站点') }
 }
 
 function normalizeUrl(input) {
   let value = String(input || '').trim().replace(/\/+$/, '')
-  if (!value) value = DEFAULT_BASE_URL
+  if (!value) throw new Error('empty_url')
   if (!/^https?:\/\//.test(value)) value = 'https://' + value
   return new URL(value).origin
 }
@@ -80,8 +86,8 @@ function migrateSettings(raw) {
       .filter(item => item && typeof item === 'object')
       .map(item => ({
         id: String(item.id || uid()),
-        name: String(item.name || item.username || '肖恩AI').trim().slice(0, 40),
-        base_url: String(item.base_url || DEFAULT_BASE_URL),
+        name: String(item.name || item.username || 'AI 账号').trim().slice(0, 40),
+        base_url: String(item.base_url || ''),
         username: String(item.username || '').trim(),
         password: String(item.password || ''),
         enabled: item.enabled === undefined ? true : Boolean(item.enabled),
@@ -90,8 +96,8 @@ function migrateSettings(raw) {
   } else if (source.username || source.password) {
     accounts.push({
       id: 'toter',
-      name: '肖恩AI',
-      base_url: String(source.base_url || DEFAULT_BASE_URL),
+      name: 'AI 账号',
+      base_url: String(source.base_url || ''),
       username: String(source.username || '').trim(),
       password: String(source.password || ''),
       enabled: true,
@@ -109,6 +115,7 @@ function migrateSettings(raw) {
   return {
     notify_success: source.notify_success !== false,
     notify_failure: source.notify_failure !== false,
+    sign_time: normalizeTime(source.sign_time),
     accounts
   }
 }
@@ -327,6 +334,7 @@ function renderDashboard() {
   $('hero-done').textContent = String(doneAccounts.length)
   $('hero-total').textContent = String(enabled.length)
   $('chip-enabled').textContent = String(enabled.length)
+  $('chip-sign-time').textContent = current.sign_time || DEFAULT_SIGN_TIME
   $('ring-percent').textContent = `${percent}%`
   $('ring-value').style.strokeDasharray = String(CIRC)
   $('ring-value').style.strokeDashoffset = String(CIRC * (1 - percent / 100))
@@ -338,11 +346,11 @@ function renderDashboard() {
   $('sites-count').textContent = String(current.accounts.length)
 
   if (!current.accounts.length) {
-    $('hero-sub').textContent = '请先添加肖恩AI 账号，保存后每天自动完成签到。'
+    $('hero-sub').textContent = '请先添加 AI 账号，保存后每天到点自动完成签到。'
   } else if (!enabled.length) {
     $('hero-sub').textContent = '当前账号均已停用，启用后才会执行签到。'
   } else if (doneAccounts.length === enabled.length) {
-    $('hero-sub').textContent = '今日签到已完成，明天 00:01 会继续自动打卡。'
+    $('hero-sub').textContent = `今日签到已完成，明天 ${current.sign_time || DEFAULT_SIGN_TIME} 会继续自动打卡。`
   } else if (doneAccounts.length > 0) {
     $('hero-sub').textContent = `已有 ${doneAccounts.length} 个账号完成签到，还有 ${enabled.length - doneAccounts.length} 个待处理。`
   } else {
@@ -357,6 +365,7 @@ function renderDashboard() {
 function fillGlobalForm() {
   $('cfg-notify-success').checked = current.notify_success !== false
   $('cfg-notify-failure').checked = current.notify_failure !== false
+  $('cfg-sign-time').value = current.sign_time || DEFAULT_SIGN_TIME
 }
 
 async function migrateHistory() {
@@ -409,7 +418,7 @@ function openModal(id = null) {
   const account = id ? getAccount(id) : null
   $('modal-title').textContent = account ? '编辑 AI 账号' : '添加 AI 账号'
   $('m-name').value = account?.name || ''
-  $('m-base-url').value = account?.base_url || DEFAULT_BASE_URL
+  $('m-base-url').value = account?.base_url || ''
   $('m-username').value = account?.username || ''
   $('m-password').value = ''
   $('m-enabled').checked = account ? account.enabled : true
@@ -429,6 +438,10 @@ async function saveModalAccount() {
   const enabled = $('m-enabled').checked
 
   let baseUrl
+  if (!$('m-base-url').value.trim()) {
+    toast('请填写站点地址', 'err')
+    return
+  }
   try {
     baseUrl = normalizeUrl($('m-base-url').value)
   } catch {
@@ -536,6 +549,14 @@ async function handleRun(accountId = null) {
     toast('请先启用至少一个 AI 账号', 'err')
     return
   }
+  if (target && !target.base_url) {
+    toast('请先填写该账号的站点地址', 'err')
+    return
+  }
+  if (!target && !current.accounts.some(account => account.enabled && account.base_url)) {
+    toast('请先填写启用账号的站点地址', 'err')
+    return
+  }
 
   try {
     running = true
@@ -546,7 +567,8 @@ async function handleRun(accountId = null) {
     const key = `page-manual-${Date.now()}`
     const input = { source: 'page' }
     if (accountId) input.accountId = accountId
-    const runId = await ctxRef.tasks.run('daily-signin', key, input)
+    const started = await ctxRef.tasks.run('daily-signin', key, input)
+    const runId = started?.id || started?.run_id || started
     const run = await waitRun(runId)
     await load()
 
@@ -631,6 +653,14 @@ export function mount(ctx) {
   on($('cfg-notify-failure'), 'change', async event => {
     current.notify_failure = event.target.checked
     await persistSettings()
+  })
+  on($('cfg-sign-time'), 'change', async event => {
+    const next = normalizeTime(event.target.value)
+    event.target.value = next
+    current.sign_time = next
+    await persistSettings()
+    renderDashboard()
+    toast(`每日签到时间已设为 ${next}`, 'ok')
   })
 
   on($('notify-test'), 'click', () => void handleNotifyTest())

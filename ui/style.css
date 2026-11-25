@@ -188,6 +188,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field input { width: 100%; border: 1px solid var(--border); background: var(--bg); border-radius: 10px; padding: 10px 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
 .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(109,139,255,.14); }
 .field small { color: var(--muted); font-size: 11px; }
+.schedule-field { grid-column: 1 / -1; }
+.schedule-field input { max-width: 220px; }
 
 .notify-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 .notify-bar .btn { padding: 8px 14px; font-size: 12px; }
